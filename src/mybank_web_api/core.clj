@@ -8,6 +8,12 @@
 
 (defonce server (atom nil))
 
+;1 - Tratamento de conta inválida/inexistente no deposito. Retornar o status http de erro e mensagem no body.
+;
+;2 - Implementar funcionalidade saque
+;
+;3 - Criar reset do servidor (tenta stop e tenta start) e demonstrar no mesmo repl antes e depois do tratamento de erro no ex. 1
+
 (defonce contas (atom {:1 {:saldo 100}
                        :2 {:saldo 200}
                        :3 {:saldo 300}}))
@@ -34,10 +40,21 @@
      :body {:id-conta   id-conta
                         :novo-saldo (id-conta @contas)}}))
 
+(def validate-conta-existe
+  {:name ::validate-conta-existe
+   :enter (fn [context] (let [id (-> request :path-params :id keyword)
+                              usuario (contas (usuario-com-id id))] ;; arrumar como recupera usuario
+                          (if usuario
+                            (update context :request assoc :usuario usuario)
+                            {:status 400
+                             :headers {"Content-Type" "text/plain"}
+                             :body {:erro   "conta não existe"
+                                    :conta id}}))))}) ;; ta quebrado
+
 (def routes
   (route/expand-routes
     #{["/saldo/:id" :get get-saldo :route-name :saldo]
-      ["/deposito/:id" :post make-deposit :route-name :deposito]}))
+      ["/deposito/:id" :post make-deposit :route-name :deposito]})) ;; colocar o interceptor
 
 
 (def service-map-simple {::http/routes routes
