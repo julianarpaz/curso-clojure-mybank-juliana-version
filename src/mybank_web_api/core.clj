@@ -40,21 +40,39 @@
      :body {:id-conta   id-conta
                         :novo-saldo (id-conta @contas)}}))
 
+(defn make-withdraw [request]
+  (let [conta (:conta request)
+        contas (:contas request)
+        ;id-conta (-> request :path-params :id keyword) -- funciona sem o merge
+        ;id-conta (:id (:conta request)) -- funciona se o merge for feito
+        ;id-conta (-> request :conta :id) -- funcioa se o merge for feito
+        ;conta (get @contas id-conta) ; toda vez que for necessário utilizar conta, terá esse código se o merge não for feito
+        valor (-> request :body slurp parse-double) ; TODO sanitizar entrada do valor
+        ;SIDE-EFFECT! (swap! contas (fn [mapa] (update-in mapa [(:id conta) :saldo] #(- % valor))))]
+        SIDE-EFFECT! (swap! contas update-in [(:id conta) :saldo] - valor)]
+    {:status  200
+     :headers {"Content-Type" "text/plain"}
+     :body    {:id-conta   (:id conta)
+               :novo-saldo ((:id conta) @contas)}}))
+
 (def validate-conta-existe
-  {:name ::validate-conta-existe
-   :enter (fn [context] (let [id (-> request :path-params :id keyword)
-                              usuario (contas (usuario-com-id id))] ;; arrumar como recupera usuario
-                          (if usuario
-                            (update context :request assoc :usuario usuario)
-                            {:status 400
-                             :headers {"Content-Type" "text/plain"}
-                             :body {:erro   "conta não existe"
-                                    :conta id}}))))}) ;; ta quebrado
+  {:name  ::validate-conta-existe
+   :enter (fn [context]
+            (let [id (-> (:request context) :path-params :id keyword)
+                  contas (-> context :request :contas)
+                  conta (get @contas id)]
+              (if conta ;; { :saldo nil } mesmo que saldo nil, retorna true
+                (update context :request assoc :conta (merge conta {:id id}))
+                (assoc context :response {:status  400
+                                          :headers {"Content-Type" "text/plain"}
+                                          :body    {:erro  "conta não existe"
+                                                    :conta id}}))))})
 
 (def routes
   (route/expand-routes
     #{["/saldo/:id" :get get-saldo :route-name :saldo]
-      ["/deposito/:id" :post make-deposit :route-name :deposito]})) ;; colocar o interceptor
+      ["/deposito/:id" :post [validate-conta-existe make-deposit] :route-name :deposito]
+      ["/saque/:id" :post [validate-conta-existe make-withdraw] :route-name :saque]}))
 
 
 (def service-map-simple {::http/routes routes
@@ -73,12 +91,19 @@
 (defn start []
   (reset! server (http/start (create-server))))
 
+(defn reset []
+  (try (do
+         (http/stop @server)
+         (start))
+       (catch Exception _ (start))))
+
 (defn test-request [server verb url]
   (test-http/response-for (::http/service-fn @server) verb url))
 (defn test-post [server verb url body]
   (test-http/response-for (::http/service-fn @server) verb url :body body))
 
 (comment
+  (reset)
   (start)
   (http/stop @server)
 
@@ -89,6 +114,7 @@
   (test-request server :get "/saldo/4")
   (test-post server :post "/deposito/1" "199.93")
   (test-post server :post "/deposito/4" "325.99")
+  (test-post server :post "/saque/1" "1")
 
   ;curl http://localhost:9999/saldo/1
   ;curl -d "199.99" -X POST http://localhost:9999/deposito/1
