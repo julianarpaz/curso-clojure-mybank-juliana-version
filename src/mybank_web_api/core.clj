@@ -42,8 +42,13 @@
 
 (defn make-withdraw [request]
   (let [conta (:conta request)
-        valor (-> request :body slurp parse-double)
-        SIDE-EFFECT! (swap! contas (fn [m] (update-in m [(:id conta) :saldo] #(- % valor))))]
+        contas (:contas request)
+        ;id-conta (-> request :path-params :id keyword) -- funciona sem o merge
+        ;id-conta (:id (:conta request)) -- funciona se o merge for feito
+        ;id-conta (-> request :conta :id) -- funcioa se o merge for feito
+        ;conta (get @contas id-conta) ; toda vez que for necessário utilizar conta, terá esse código se o merge não for feito
+        valor (-> request :body slurp parse-double) ; TODO sanitizar entrada do valor
+        SIDE-EFFECT! (swap! contas (fn [mapa] (update-in mapa [(:id conta) :saldo] #(- % valor))))]
     {:status  200
      :headers {"Content-Type" "text/plain"}
      :body    {:id-conta   (:id conta)
@@ -53,9 +58,10 @@
   {:name  ::validate-conta-existe
    :enter (fn [context]
             (let [id (-> (:request context) :path-params :id keyword)
-                  saldo-usuario (get @contas id)]
-              (if saldo-usuario
-                (update context :request assoc :conta (merge saldo-usuario {:id id}))
+                  contas (-> context :request :contas)
+                  conta (get @contas id)]
+              (if conta ;; { :saldo nil } mesmo que saldo nil, retorna true
+                (update context :request assoc :conta (merge conta {:id id}))
                 (assoc context :response {:status  400
                                           :headers {"Content-Type" "text/plain"}
                                           :body    {:erro  "conta não existe"
