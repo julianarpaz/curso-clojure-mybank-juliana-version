@@ -90,12 +90,19 @@
 (defn start []
   (reset! server (http/start (create-server))))
 
+(defn reset []
+  (try (do
+         (http/stop @server)
+         (start))
+       (catch Exception _ (start))))
+
 (defn test-request [server verb url]
   (test-http/response-for (::http/service-fn @server) verb url))
 (defn test-post [server verb url body]
   (test-http/response-for (::http/service-fn @server) verb url :body body))
 
 (comment
+  (reset)
   (start)
   (http/stop @server)
 
