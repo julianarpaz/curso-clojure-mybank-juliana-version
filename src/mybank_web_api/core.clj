@@ -48,7 +48,8 @@
         ;id-conta (-> request :conta :id) -- funcioa se o merge for feito
         ;conta (get @contas id-conta) ; toda vez que for necessário utilizar conta, terá esse código se o merge não for feito
         valor (-> request :body slurp parse-double) ; TODO sanitizar entrada do valor
-        SIDE-EFFECT! (swap! contas (fn [mapa] (update-in mapa [(:id conta) :saldo] #(- % valor))))]
+        ;SIDE-EFFECT! (swap! contas (fn [mapa] (update-in mapa [(:id conta) :saldo] #(- % valor))))]
+        SIDE-EFFECT! (swap! contas update-in [(:id conta) :saldo] - valor)]
     {:status  200
      :headers {"Content-Type" "text/plain"}
      :body    {:id-conta   (:id conta)
