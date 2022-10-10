@@ -40,6 +40,15 @@
      :body {:id-conta   id-conta
                         :novo-saldo (id-conta @contas)}}))
 
+(defn make-withdraw [request]
+  (let [conta (:conta request)
+        valor (-> request :body slurp parse-double)
+        SIDE-EFFECT! (swap! contas (fn [m] (update-in m [(:id conta) :saldo] #(- % valor))))]
+    {:status  200
+     :headers {"Content-Type" "text/plain"}
+     :body    {:id-conta   (:id conta)
+               :novo-saldo ((:id conta) @contas)}}))
+
 (def validate-conta-existe
   {:name  ::validate-conta-existe
    :enter (fn [context]
@@ -55,7 +64,8 @@
 (def routes
   (route/expand-routes
     #{["/saldo/:id" :get get-saldo :route-name :saldo]
-      ["/deposito/:id" :post [validate-conta-existe make-deposit] :route-name :deposito]}))
+      ["/deposito/:id" :post [validate-conta-existe make-deposit] :route-name :deposito]
+      ["/saque/:id" :post [validate-conta-existe make-withdraw] :route-name :saque]}))
 
 
 (def service-map-simple {::http/routes routes
@@ -90,6 +100,7 @@
   (test-request server :get "/saldo/4")
   (test-post server :post "/deposito/1" "199.93")
   (test-post server :post "/deposito/4" "325.99")
+  (test-post server :post "/saque/1" "1")
 
   ;curl http://localhost:9999/saldo/1
   ;curl -d "199.99" -X POST http://localhost:9999/deposito/1
