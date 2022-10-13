@@ -2,24 +2,31 @@
   (:require [clojure.test :refer :all]
             [mybank-web-api.core :refer :all]))
 
-(deftest a-test
-  (testing "FIXED, I will not fail."
-    (is (= 1 1))))
+(deftest is-a-valid-number?-test
+  (testing "Checking if there is any content at all"
+    (are [x y] (= x y)
+               false (is-a-valid-number? "")
+               false (is-a-valid-number? " ")))
+  (testing "Checking if the content is a valid number"
+    (are [x y] (= x y)
+               false  (is-a-valid-number? "120a")
+               true   (is-a-valid-number? "120")
+               true   (is-a-valid-number? "120.0"))))
 
 
-(deftest api-test
-  (testing "Verificar ."
-    (is (= (do (start) (test-request server :get "/greet"))
-           {:status  200,
-            :body    "Olá Pedestal!",
-            :headers {"Strict-Transport-Security"         "max-age=31536000; includeSubdomains",
-                      "X-Frame-Options"                   "DENY",
-                      "X-Content-Type-Options"            "nosniff",
-                      "X-XSS-Protection"                  "1; mode=block",
-                      "X-Download-Options"                "noopen",
-                      "X-Permitted-Cross-Domain-Policies" "none",
-                      "Content-Security-Policy"           "object-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'strict-dynamic' https: http:;",
-                      "Content-Type"                      "text/plain"}}
+(deftest positive?-test
+  (testing "Checking if the number is greater than zero"
+    (are [x y] (= x y)
+               true   (positive? "0.1")
+               false  (positive? "0.0")
+               false  (positive?"-0.1"))))
 
-           ))))
+(deftest sanitizer-test
+  (testing "Checking if the return is a BigDecimal"
+    (is (= java.math.BigDecimal (type (sanitizer "120.0")))))
+  (testing "Checking if the return is the same value and a BigDecimal also"
+    (is (= 120M (sanitizer "120.0")))))
 
+(comment
+  (run-tests)
+  )

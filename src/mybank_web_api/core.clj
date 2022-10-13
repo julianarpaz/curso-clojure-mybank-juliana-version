@@ -8,12 +8,6 @@
 
 (defonce server (atom nil))
 
-;1 - Tratamento de conta inválida/inexistente no deposito. Retornar o status http de erro e mensagem no body.
-;
-;2 - Implementar funcionalidade saque
-;
-;3 - Criar reset do servidor (tenta stop e tenta start) e demonstrar no mesmo repl antes e depois do tratamento de erro no ex. 1
-
 (defonce contas (atom {:1 {:saldo 100}
                        :2 {:saldo 200}
                        :3 {:saldo 300}}))
@@ -25,20 +19,32 @@
   {:name  :contas-interceptor
    :enter add-contas-atom})
 
+(defn is-a-valid-number? [string]
+  (double? (parse-double string)))
+
+(defn positive? [string]
+  (-> string bigdec (> 0)))
+
+(defn sanitizer [string]
+  "Determinates if a string passed as input is a positive number and case it is
+  returns its content as a BigDecimal, case it's not "
+  (if (and (is-a-valid-number? string) (positive? string))
+     (bigdec string)))
+
 (defn get-saldo [request]
   (let [id-conta (-> request :path-params :id keyword)]
-    {:status 200
+    {:status  200
      :headers {"Content-Type" "text/plain"}
-     :body (id-conta @contas "conta inválida!")}))
+     :body    (id-conta @contas "conta inválida!")}))
 
 (defn make-deposit [request]
   (let [id-conta (-> request :path-params :id keyword)
-        valor-deposito (-> request :body slurp parse-double)
-        SIDE-EFFECT! (swap! contas (fn [m] (update-in m [id-conta :saldo] #(+ % valor-deposito))))]
-    {:status 200
+        valor-deposito (-> request :body slurp sanitizer)
+        SIDE-EFFECT! (swap! contas (fn [m] (update-in m [id-conta :saldo] (bigdec #(+ % valor-deposito)))))]
+    {:status  200
      :headers {"Content-Type" "text/plain"}
-     :body {:id-conta   id-conta
-                        :novo-saldo (id-conta @contas)}}))
+     :body    {:id-conta   id-conta
+               :novo-saldo (id-conta @contas)}}))
 
 (defn make-withdraw [request]
   (let [conta (:conta request)
@@ -47,9 +53,9 @@
         ;id-conta (:id (:conta request)) -- funciona se o merge for feito
         ;id-conta (-> request :conta :id) -- funcioa se o merge for feito
         ;conta (get @contas id-conta) ; toda vez que for necessário utilizar conta, terá esse código se o merge não for feito
-        valor (-> request :body slurp parse-double) ; TODO sanitizar entrada do valor
-        ;SIDE-EFFECT! (swap! contas (fn [mapa] (update-in mapa [(:id conta) :saldo] #(- % valor))))]
-        SIDE-EFFECT! (swap! contas update-in [(:id conta) :saldo] - valor)]
+        valor (-> request :body slurp sanitizer)
+        SIDE-EFFECT! (swap! contas (fn [mapa] (update-in mapa [(:id conta) :saldo] (bigdec #(- % valor)))))]
+        ;SIDE-EFFECT! (swap! contas update-in [(:id conta) :saldo] - valor)]
     {:status  200
      :headers {"Content-Type" "text/plain"}
      :body    {:id-conta   (:id conta)
@@ -61,18 +67,29 @@
             (let [id (-> (:request context) :path-params :id keyword)
                   contas (-> context :request :contas)
                   conta (get @contas id)]
-              (if conta ;; { :saldo nil } mesmo que saldo nil, retorna true
+              (if conta                                     ;; { :saldo nil } mesmo que saldo nil, retorna true
                 (update context :request assoc :conta (merge conta {:id id}))
                 (assoc context :response {:status  400
                                           :headers {"Content-Type" "text/plain"}
                                           :body    {:erro  "conta não existe"
                                                     :conta id}}))))})
 
+(def validate-value
+  {:name  ::validate-value
+   :enter (fn [context]
+            (let [value (-> context :request :body)]
+              (if (sanitizer value)
+                (algo)
+                (assoc context :response {:status  400 ;;else
+                                          :headers {"Content-Type" "text/plain"}
+                                          :body    {:erro  "Valor inválido."
+                                                    :conta id}}))))})
+
 (def routes
   (route/expand-routes
     #{["/saldo/:id" :get get-saldo :route-name :saldo]
-      ["/deposito/:id" :post [validate-conta-existe make-deposit] :route-name :deposito]
-      ["/saque/:id" :post [validate-conta-existe make-withdraw] :route-name :saque]}))
+      ["/deposito/:id" :post [validate-conta-existe validate-value make-deposit] :route-name :deposito]
+      ["/saque/:id" :post [validate-conta-existe validate-value make-withdraw] :route-name :saque]}))
 
 
 (def service-map-simple {::http/routes routes
@@ -112,7 +129,7 @@
   (test-request server :get "/saldo/2")
   (test-request server :get "/saldo/3")
   (test-request server :get "/saldo/4")
-  (test-post server :post "/deposito/1" "199.93")
+  (test-post server :post "/deposito/1" "-100.00")
   (test-post server :post "/deposito/4" "325.99")
   (test-post server :post "/saque/1" "1")
 
