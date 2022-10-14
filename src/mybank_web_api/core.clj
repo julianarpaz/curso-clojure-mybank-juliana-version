@@ -39,8 +39,8 @@
 
 (defn make-deposit [request]
   (let [id-conta (-> request :path-params :id keyword)
-        valor-deposito (-> request :body slurp sanitizer)
-        SIDE-EFFECT! (swap! contas (fn [m] (update-in m [id-conta :saldo] (bigdec #(+ % valor-deposito)))))]
+        valor-deposito (:valor request)
+        SIDE-EFFECT! (swap! contas (fn [m] (update-in m [id-conta :saldo] #(+ % valor-deposito))))]
     {:status  200
      :headers {"Content-Type" "text/plain"}
      :body    {:id-conta   id-conta
@@ -53,8 +53,8 @@
         ;id-conta (:id (:conta request)) -- funciona se o merge for feito
         ;id-conta (-> request :conta :id) -- funcioa se o merge for feito
         ;conta (get @contas id-conta) ; toda vez que for necessário utilizar conta, terá esse código se o merge não for feito
-        valor (-> request :body slurp sanitizer)
-        SIDE-EFFECT! (swap! contas (fn [mapa] (update-in mapa [(:id conta) :saldo] (bigdec #(- % valor)))))]
+        valor (:valor request)
+        SIDE-EFFECT! (swap! contas (fn [mapa] (update-in mapa [(:id conta) :saldo]  #(- % valor))))]
         ;SIDE-EFFECT! (swap! contas update-in [(:id conta) :saldo] - valor)]
     {:status  200
      :headers {"Content-Type" "text/plain"}
@@ -77,13 +77,14 @@
 (def validate-value
   {:name  ::validate-value
    :enter (fn [context]
-            (let [value (-> context :request :body)]
-              (if (sanitizer value)
-                (algo)
+            (let [value (-> context :request :body slurp)
+                  value-sanitizado (sanitizer value)]
+              (if value-sanitizado
+                (update context :request assoc :valor value-sanitizado)
                 (assoc context :response {:status  400 ;;else
                                           :headers {"Content-Type" "text/plain"}
                                           :body    {:erro  "Valor inválido."
-                                                    :conta id}}))))})
+                                                    :valor value}}))))})
 
 (def routes
   (route/expand-routes
