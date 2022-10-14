@@ -40,7 +40,7 @@
 (defn make-deposit [request]
   (let [id-conta (-> request :path-params :id keyword)
         valor-deposito (:valor request)
-        SIDE-EFFECT! (swap! contas (fn [m] (update-in m [id-conta :saldo] #(+ % valor-deposito))))]
+        SIDE-EFFECT! (swap! contas (fn [m] (update-in m [id-conta :saldo] #(-> % (+ valor-deposito) bigdec))))]
     {:status  200
      :headers {"Content-Type" "text/plain"}
      :body    {:id-conta   id-conta
@@ -54,7 +54,7 @@
         ;id-conta (-> request :conta :id) -- funcioa se o merge for feito
         ;conta (get @contas id-conta) ; toda vez que for necessário utilizar conta, terá esse código se o merge não for feito
         valor (:valor request)
-        SIDE-EFFECT! (swap! contas (fn [mapa] (update-in mapa [(:id conta) :saldo]  #(- % valor))))]
+        SIDE-EFFECT! (swap! contas (fn [mapa] (update-in mapa [(:id conta) :saldo]  #(-> % (- valor) bigdec))))]
         ;SIDE-EFFECT! (swap! contas update-in [(:id conta) :saldo] - valor)]
     {:status  200
      :headers {"Content-Type" "text/plain"}
@@ -130,7 +130,7 @@
   (test-request server :get "/saldo/2")
   (test-request server :get "/saldo/3")
   (test-request server :get "/saldo/4")
-  (test-post server :post "/deposito/1" "-100.00")
+  (test-post server :post "/deposito/1" "100.00")
   (test-post server :post "/deposito/4" "325.99")
   (test-post server :post "/saque/1" "1")
 
