@@ -16,19 +16,15 @@
 (deftest saldo-suficiente?-test
   (let [conta {:saldo 100}]
     (testing "Check success"
-      ;(are [x] (saldo-suficiente? conta x)
-      ;            true (saldo-suficiente? conta 1)
-      ;            true (saldo-suficiente? conta 99)
-      ;            true (saldo-suficiente? conta 100))
-      (are [x] (saldo-suficiente? conta x)
-               1
-               99
-               100))
-      (is (= true (saldo-suficiente? conta 1)))
-      (is (= true (saldo-suficiente? conta 99)))
-      (is (= true (saldo-suficiente? conta 100)))
+      (are [x y] (= x (saldo-suficiente? conta y))
+                  true 1
+                  true 99
+                  true 100)
     (testing "Check failure"
-      (is (= false (saldo-suficiente? conta 110))))))
+      (are [x] (= false (saldo-suficiente? conta x))
+                 100.01
+                 100.1
+                 110)))))
 
 (deftest positive?-test
   (testing "Checking if the number is greater than zero"
