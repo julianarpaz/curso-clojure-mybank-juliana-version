@@ -9,10 +9,10 @@
 
 (s/defschema Context {s/Any s/Any})
 
-(s/defschema Response {s/Any s/Any
-                       :response {:body s/Any
+(s/defschema Response {s/Any     s/Any
+                       :response {:body   s/Any
                                   :status s/Int
-                                  s/Any s/Any}})
+                                  s/Any   s/Any}})
 
 (s/defn ^:always-validate get-saldo :- SaldoResult
   [id-conta :- IdConta
@@ -29,7 +29,15 @@
                               :headers {"Content-Type" "text/plain"}
                               :body    saldo})))
 
-(defn make-deposit! [id-conta contas valor-deposito]
+(s/defschema ValorDeposito (s/pred number?))
+(s/defschema ContasAtom (s/pred #(instance? clojure.lang.Atom %)))
+(s/defschema DepositoResult {:id-conta s/Keyword
+                             :novo-saldo s/Num})
+
+(s/defn ^:always-validate make-deposit! :- Contas
+  [id-conta :- IdConta
+   contas :- ContasAtom
+   valor-deposito :- ValorDeposito]
   (swap! contas (fn [m] (update-in m [id-conta :saldo] #(+ % valor-deposito)))))
 
 (s/defn ^:always-validate make-deposit! :- SaldoResult
@@ -49,10 +57,3 @@
                               :body    {:id-conta   id-conta
                                         :novo-saldo novo-saldo}})))
 
-(comment
-  (def context {:request {:body        "100.00"
-                          :path-params {:id 1}}
-                :contas  (atom {:1 {:saldo 10}})})
-  (make-deposit-interceptor context)
-
-  )
