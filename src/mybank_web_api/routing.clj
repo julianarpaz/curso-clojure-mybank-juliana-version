@@ -7,10 +7,12 @@
 
 (def routes
   (route/expand-routes
-    #{["/saldo/:id" :get (i/interceptor {:name  :get-saldo
-                                         :enter bank/get-saldo-interceptor}) :route-name :saldo]
-      ["/deposito/:id" :post (i/interceptor {:name  :make-deposit
-                                             :enter bank/make-deposit-interceptor}) :route-name :deposito]}))
+    #{["/saldo/:id" :get [bank/validate-conta-existe
+                          (i/interceptor {:name  :get-saldo
+                                          :enter bank/get-saldo-interceptor})] :route-name :saldo]
+      ["/deposito/:id" :post [bank/validate-conta-existe bank/validate-value
+                              (i/interceptor {:name  :make-deposit
+                                              :enter bank/make-deposit-interceptor})] :route-name :deposito]}))
 
 
 

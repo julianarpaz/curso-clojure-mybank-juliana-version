@@ -3,7 +3,8 @@
   (:import (clojure.lang BigInt)))
 
 (comment
-  (def FooBar {:foo s/Keyword :bar [Number]})               ;; a schema
+  (def FooBar {:foo s/Keyword :bar [Number]})
+  (def FooBar {:foo s/Keyword :bar [s/Num]}) ;; a schema
   ;(def FooBar {:foo s/Keyword :bar [s/Any]}) ;; a schema
 
   (type FooBar)
@@ -100,4 +101,22 @@
 
   (defn small? [x] (> 3 x))
 
-  (s/validate (s/pred small?) 3))
+  (s/validate (s/pred small?) 3)
+
+  (defn is-a-valid-number? [string]
+    (double? (parse-double string)))
+
+  (defn positive? [string]
+    (-> string bigdec (> 0)))
+
+  (defn sanitizer [string]
+    "Determinates if a string passed as input is a positive number and case it is
+    returns its content as a BigDecimal, case it's not "
+    (if (and (is-a-valid-number? string) (positive? string))
+      (bigdec string)))
+
+  (s/defschema valid-transaction-value (s/pred positive?))
+  (s/check valid-transaction-value -150)
+  (s/validate valid-transaction-value "4")
+  )
+

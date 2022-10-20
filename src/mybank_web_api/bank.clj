@@ -1,11 +1,12 @@
 (ns mybank-web-api.bank
-  (:require [schema.core :as s]))
+  (:require [schema.core :as s]
+            [io.pedestal.interceptor :as i]))
 
 
 (s/defschema IdConta s/Keyword)
 (s/defschema Contas {s/Keyword {:saldo Number}})
 (s/defschema SaldoResult (s/maybe {:saldo Number}))
-(s/defschema Saldo s/Num)
+
 
 (s/defschema Context {s/Any s/Any})
 
@@ -30,6 +31,7 @@
                               :body    saldo})))
 
 (s/defschema ValorDeposito (s/pred number?))
+
 (s/defschema ContasAtom (s/pred #(instance? clojure.lang.Atom %)))
 (s/defschema DepositoResult {:id-conta s/Keyword
                              :novo-saldo s/Num})
@@ -40,20 +42,39 @@
    valor-deposito :- ValorDeposito]
   (swap! contas (fn [m] (update-in m [id-conta :saldo] #(+ % valor-deposito)))))
 
-(s/defn ^:always-validate make-deposit! :- SaldoResult
-  [id-conta :- IdConta
-   contas :- Contas
-   valor-deposito :- Saldo])
 
 (defn make-deposit-interceptor [context]
   (let [id-conta (-> context :request :path-params :id keyword)
         contas (-> context :contas)
         valor-deposito (-> context :request :body slurp parse-double)
         _ (make-deposit! id-conta contas valor-deposito)
-        novo-saldo (id-conta @contas)
-        ]
+        novo-saldo (id-conta @contas)]
     (assoc context :response {:status  200
                               :headers {"Content-Type" "text/plain"}
                               :body    {:id-conta   id-conta
                                         :novo-saldo novo-saldo}})))
+(def validate-value
+  (i/interceptor {:name  ::validate-value
+    :enter (fn [context]
+             (let [value (-> context :request :body slurp)
+                   value-sanitizado (sanitizer value)]
+               (if value-sanitizado
+                 (assoc context :valor value-sanitizado)
+                 (assoc context :response {:status  400
+                                           :headers {"Content-Type" "text/plain"}
+                                           :body    {:erro  "Valor inválido."
+                                                     :valor value}}))))}))
+
+(def validate-conta-existe
+  (i/interceptor {:name  ::validate-conta-existe
+    :enter (fn [context]
+             (let [id (-> (:request context) :path-params :id keyword)
+                   contas (-> context :contas)
+                   conta (get @contas id)]
+               (if conta                                    ;; { :saldo nil } mesmo que saldo nil, retorna true
+                 (assoc context :conta (merge conta {:id id}))
+                 (assoc context :response {:status  400
+                                           :headers {"Content-Type" "text/plain"}
+                                           :body    {:erro  "conta não existe"
+                                                     :conta id}}))))}))
 
