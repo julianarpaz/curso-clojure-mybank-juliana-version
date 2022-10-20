@@ -5,13 +5,7 @@
 (s/defschema IdConta s/Keyword)
 (s/defschema Contas {s/Keyword {:saldo Number}})
 (s/defschema SaldoResult (s/maybe {:saldo Number}))
-
-
-(s/defn ^:always-validate get-saldo :- SaldoResult
-  [id-conta :- IdConta
-   contas :- Contas]
-  (get contas id-conta))
-
+(s/defschema Saldo s/Num)
 
 (s/defschema Context {s/Any s/Any})
 
@@ -19,6 +13,12 @@
                        :response {:body s/Any
                                   :status s/Int
                                   s/Any s/Any}})
+
+(s/defn ^:always-validate get-saldo :- SaldoResult
+  [id-conta :- IdConta
+   contas :- Contas]
+  (get contas id-conta))
+
 
 (s/defn ^:always-validate get-saldo-interceptor :- Response
   [context :- Context]
@@ -31,6 +31,11 @@
 
 (defn make-deposit! [id-conta contas valor-deposito]
   (swap! contas (fn [m] (update-in m [id-conta :saldo] #(+ % valor-deposito)))))
+
+(s/defn ^:always-validate make-deposit! :- SaldoResult
+  [id-conta :- IdConta
+   contas :- Contas
+   valor-deposito :- Saldo])
 
 (defn make-deposit-interceptor [context]
   (let [id-conta (-> context :request :path-params :id keyword)
