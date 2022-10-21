@@ -103,17 +103,7 @@
 
   (s/validate (s/pred small?) 3)
 
-  (defn is-a-valid-number? [string]
-    (double? (parse-double string)))
 
-  (defn positive? [string]
-    (-> string bigdec (> 0)))
-
-  (defn sanitizer [string]
-    "Determinates if a string passed as input is a positive number and case it is
-    returns its content as a BigDecimal, case it's not "
-    (if (and (is-a-valid-number? string) (positive? string))
-      (bigdec string)))
 
   (s/defschema valid-transaction-value (s/pred positive?))
   (s/check valid-transaction-value -150)

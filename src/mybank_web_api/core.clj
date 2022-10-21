@@ -28,6 +28,7 @@
   (visualize-system new-sys)
   (require '[clj-http.client :as client])
   (client/post "http://localhost:9999/deposito/1" {:body "199.93"})
+  (client/get "http://localhost:9999/saldo/1")
   (main)
   (:web-server @sys)
   (start)

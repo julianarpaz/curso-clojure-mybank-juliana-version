@@ -15,6 +15,18 @@
                                   :status s/Int
                                   s/Any   s/Any}})
 
+(defn is-a-valid-number? [string]
+  (double? (parse-double string)))
+
+(defn positive? [string]
+  (-> string bigdec (> 0)))
+
+(defn sanitizer [string]
+  "Determinates if a string passed as input is a positive number and case it is
+  returns its content as a BigDecimal, case it's not "
+  (if (and (is-a-valid-number? string) (positive? string))
+    (bigdec string)))
+
 (s/defn ^:always-validate get-saldo :- SaldoResult
   [id-conta :- IdConta
    contas :- Contas]
@@ -46,7 +58,7 @@
 (defn make-deposit-interceptor [context]
   (let [id-conta (-> context :request :path-params :id keyword)
         contas (-> context :contas)
-        valor-deposito (-> context :request :body slurp parse-double)
+        valor-deposito (-> context :valor)
         _ (make-deposit! id-conta contas valor-deposito)
         novo-saldo (id-conta @contas)]
     (assoc context :response {:status  200
@@ -54,7 +66,7 @@
                               :body    {:id-conta   id-conta
                                         :novo-saldo novo-saldo}})))
 (def validate-value
-  (i/interceptor {:name  ::validate-value
+  (i/interceptor {:name  :validate-value
     :enter (fn [context]
              (let [value (-> context :request :body slurp)
                    value-sanitizado (sanitizer value)]
@@ -66,7 +78,7 @@
                                                      :valor value}}))))}))
 
 (def validate-conta-existe
-  (i/interceptor {:name  ::validate-conta-existe
+  (i/interceptor {:name  :validate-conta-existe
     :enter (fn [context]
              (let [id (-> (:request context) :path-params :id keyword)
                    contas (-> context :contas)
@@ -77,4 +89,3 @@
                                            :headers {"Content-Type" "text/plain"}
                                            :body    {:erro  "conta não existe"
                                                      :conta id}}))))}))
-

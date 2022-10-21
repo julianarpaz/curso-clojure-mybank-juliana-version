@@ -19,6 +19,9 @@
   (stop-server)
   (start-server service-map))
 
+(defn test-post [verb url body]
+  (test/response-for (::http/service-fn @server) verb url :body body))
+
 (defrecord Servidor [database routes config]
   component/Lifecycle
 
@@ -52,3 +55,8 @@
 
 (defn new-servidor []
   (->Servidor {} {} {}))
+
+(comment
+  (test-request :get "/saldo/1")
+  (test-post :post "/deposito/1" "150.00")
+  )
