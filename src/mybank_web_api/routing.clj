@@ -10,9 +10,14 @@
     #{["/saldo/:id" :get [bank/validate-conta-existe
                           (i/interceptor {:name  :get-saldo
                                           :enter bank/get-saldo-interceptor})] :route-name :saldo]
-      ["/deposito/:id" :post [bank/validate-conta-existe bank/validate-value
+      ["/deposito/:id" :post [bank/validate-conta-existe
+                              bank/validate-value
                               (i/interceptor {:name  :make-deposit
-                                              :enter bank/make-deposit-interceptor})] :route-name :deposito]}))
+                                              :enter bank/make-deposit-interceptor})] :route-name :deposito]
+      ["/saque/:id" :post [bank/validate-conta-existe
+                           bank/validate-value
+                           (i/interceptor {:name  :make-deposit
+                                           :enter bank/make-deposit-interceptor})] :route-name :saque]}))
 
 
 

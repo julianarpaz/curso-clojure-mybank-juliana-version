@@ -49,10 +49,26 @@
                              :novo-saldo s/Num})
 
 (s/defn ^:always-validate make-deposit! :- Contas
-  [id-conta :- IdConta
-   contas :- ContasAtom
+  [contas :- ContasAtom
+   id-conta :- IdConta
    valor-deposito :- ValorDeposito]
   (swap! contas (fn [m] (update-in m [id-conta :saldo] #(+ % valor-deposito)))))
+
+(s/defn ^:always-validate make-withdraw! :- Contas
+  [accounts :- ContasAtom
+   id-account :- IdConta
+   withdraw-value :- ValorDeposito]
+   (swap! accounts (fn [m] (update-in m [id-account :saldo] #(- % withdraw-value)))))
+
+(s/defn ^:always-validate make-transfer! :- Contas
+  [accounts :- ContasAtom
+   id-origin-account :- IdConta
+   id-destiny-account :- IdConta
+   transfer-value :- ValorDeposito]
+  (->
+    (make-withdraw! accounts id-origin-account transfer-value)
+    (make-deposit! id-destiny-account transfer-value))
+  )
 
 
 (defn make-deposit-interceptor [context]
